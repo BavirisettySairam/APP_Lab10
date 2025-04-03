@@ -47,7 +47,9 @@ def load_data():
     
     return df
 
+# Load and clean data
 df = load_data()
+cleaned_df = handle_missing_values(df)
 
 if page == "Data Overview":
     st.header("Dataset Overview")
@@ -71,48 +73,45 @@ elif page == "Data Cleaning":
     missing_values = df.isnull().sum()
     st.dataframe(missing_values)
     
-    st.write("### Handle Missing Values")
-    if st.button("Clean Data"):
-        cleaned_df = handle_missing_values(df)
-        st.write("Data cleaned successfully!")
-        st.dataframe(cleaned_df.head())
-        
-        st.write("### Missing Values After Cleaning")
-        st.dataframe(cleaned_df.isnull().sum())
+    st.write("### Cleaned Data Sample")
+    st.dataframe(cleaned_df.head())
+    
+    st.write("### Missing Values After Cleaning")
+    st.dataframe(cleaned_df.isnull().sum())
 
 elif page == "EDA":
     st.header("Exploratory Data Analysis")
     
     # Age Distribution
     st.write("### Age Distribution")
-    fig = px.histogram(df, x='Age', nbins=30, title='Age Distribution of Customers')
+    fig = px.histogram(cleaned_df, x='Age', nbins=30, title='Age Distribution of Customers')
     st.plotly_chart(fig)
     
     # Rating Distribution
     st.write("### Rating Distribution")
-    fig = px.pie(df, names='Rating', title='Distribution of Ratings')
+    fig = px.pie(cleaned_df, names='Rating', title='Distribution of Ratings')
     st.plotly_chart(fig)
     
     # Department Distribution
     st.write("### Department Distribution")
-    fig = px.bar(df['Department_Name'].value_counts(), title='Distribution of Departments')
+    fig = px.bar(cleaned_df['Department_Name'].value_counts(), title='Distribution of Departments')
     st.plotly_chart(fig)
     
     # Correlation Analysis
     st.write("### Correlation Analysis")
-    numeric_cols = df.select_dtypes(include=[np.number])
+    numeric_cols = cleaned_df.select_dtypes(include=[np.number])
     corr = numeric_cols.corr()
     fig = px.imshow(corr, title='Correlation Matrix')
     st.plotly_chart(fig)
     
     # Age vs Rating
     st.write("### Age vs Rating Analysis")
-    fig = px.box(df, x='Rating', y='Age', title='Age Distribution by Rating')
+    fig = px.box(cleaned_df, x='Rating', y='Age', title='Age Distribution by Rating')
     st.plotly_chart(fig)
     
     # Department vs Rating
     st.write("### Department vs Rating Analysis")
-    fig = px.box(df, x='Department_Name', y='Rating', title='Rating Distribution by Department')
+    fig = px.box(cleaned_df, x='Department_Name', y='Rating', title='Rating Distribution by Department')
     st.plotly_chart(fig)
 
 elif page == "Machine Learning":
@@ -124,12 +123,13 @@ elif page == "Machine Learning":
         st.write("### Rating Prediction")
         st.write("This model predicts customer ratings based on various features.")
         if st.button("Run Regression"):
-            results = perform_regression(df)
+            results = perform_regression(cleaned_df)
             st.write("#### Model Results")
             st.write(f"RMSE: {results['RMSE']:.4f}")
+            st.write(f"Cross-Validation RMSE: {results['CV_RMSE']:.4f}")
             st.write("#### Feature Importance")
             feature_importance = pd.DataFrame({
-                'Feature': ['Age', 'Positive_Feedback_Count', 'Division', 'Department', 'Class'],
+                'Feature': results['Feature Names'],
                 'Importance': results['Coefficients']
             })
             fig = px.bar(feature_importance, x='Feature', y='Importance', title='Feature Importance')
@@ -140,25 +140,30 @@ elif page == "Machine Learning":
         st.write("This model segments customers into different groups based on their behavior.")
         n_clusters = st.slider("Number of Clusters", 2, 5, 3)
         if st.button("Run Clustering"):
-            results = perform_clustering(df, n_clusters)
+            results = perform_clustering(cleaned_df, n_clusters)
             st.write("#### Model Results")
             st.write(f"Silhouette Score: {results['Silhouette Score']:.4f}")
             st.write("#### Cluster Centers")
             st.dataframe(pd.DataFrame(results['Cluster Centers'], 
                                     columns=['Age', 'Rating', 'Positive_Feedback_Count', 
                                             'Division', 'Department', 'Class']))
+            st.write("#### Cluster Statistics")
+            st.dataframe(results['Cluster Statistics'])
     
     elif ml_task == "Classification":
         st.write("### Recommendation Prediction")
         st.write("This model predicts whether a customer will recommend a product.")
         if st.button("Run Classification"):
-            results = perform_classification(df)
+            results = perform_classification(cleaned_df)
             st.write("#### Model Results")
             st.write(f"AUC Score: {results['AUC']:.4f}")
+            st.write(f"Cross-Validation AUC: {results['CV_AUC']:.4f}")
+            st.write("#### Classification Report")
+            st.dataframe(pd.DataFrame(results['Classification Report']).transpose())
             st.write("#### Feature Importance")
             feature_importance = pd.DataFrame({
-                'Feature': ['Age', 'Rating', 'Positive_Feedback_Count', 'Division', 'Department', 'Class'],
-                'Importance': results['Coefficients'][0]
+                'Feature': results['Feature Names'],
+                'Importance': results['Coefficients']
             })
             fig = px.bar(feature_importance, x='Feature', y='Importance', title='Feature Importance')
             st.plotly_chart(fig) 

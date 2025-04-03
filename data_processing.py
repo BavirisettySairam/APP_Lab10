@@ -25,6 +25,10 @@ def handle_missing_values(df):
         mode_value = df_cleaned[col_name].mode()[0]
         df_cleaned[col_name] = df_cleaned[col_name].fillna(mode_value)
     
+    # Ensure no missing values remain
+    if df_cleaned.isnull().sum().sum() > 0:
+        raise ValueError("Some missing values could not be handled properly")
+    
     return df_cleaned
 
 def prepare_features(df):
@@ -56,5 +60,9 @@ def prepare_features(df):
     
     # Create feature matrix
     X = df_processed[feature_cols]
+    
+    # Ensure no missing values in features
+    if X.isnull().sum().sum() > 0:
+        raise ValueError("Some features contain missing values")
     
     return X 
